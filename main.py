@@ -67,21 +67,46 @@ logging.basicConfig(
 #     print(data)
 #     return [s["symbol"] for s in data["symbols"] if s["status"] == "TRADING"]
 
+# def fetch_futures_symbols() -> List[str]:
+#     url = f"{BINANCE_FAPI}/fapi/v1/exchangeInfo"
+#     try:
+#         response = session.get(url, timeout=10)
+#         response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
+#         data = response.json()
+#     except requests.RequestException as e:
+#         print(f"Request error: {e}")
+#         return []
+#
+#     if "symbols" not in data:
+#         print("Unexpected response structure:", data)
+#         return []
+#
+#     return [s["symbol"] for s in data["symbols"] if s["status"] == "TRADING"]
+
 def fetch_futures_symbols() -> List[str]:
     url = f"{BINANCE_FAPI}/fapi/v1/exchangeInfo"
     try:
         response = session.get(url, timeout=10)
-        response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
+        response.raise_for_status()
         data = response.json()
-    except requests.RequestException as e:
-        print(f"Request error: {e}")
-        return []
 
-    if "symbols" not in data:
-        print("Unexpected response structure:", data)
-        return []
+        if not isinstance(data, dict) or "symbols" not in data:
+            print("[ERROR] 'symbols' key missing in response:", data)
+            return []
 
-    return [s["symbol"] for s in data["symbols"] if s["status"] == "TRADING"]
+        return [s["symbol"] for s in data["symbols"] if s.get("status") == "TRADING"]
+
+    except requests.exceptions.Timeout:
+        print("[ERROR] Binance API request timed out.")
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Binance API request failed: {e}")
+    except ValueError as ve:
+        print(f"[ERROR] Failed to parse JSON: {ve}")
+    except Exception as ex:
+        print(f"[ERROR] Unexpected error: {ex}")
+
+    return []
+
 
 def fetch_klines(symbol: str, interval: str, limit: int = 150) -> pd.Series:
     url = f"{BINANCE_FAPI}/fapi/v1/klines"
