@@ -29,8 +29,8 @@ from telegram.constants import ParseMode
 # ────────────────────────────── CONFIG ───────────────────────────────────
 RSI_PERIOD = 30
 STOCHRSI_PERIOD = 30
-RSI_THRESHOLD = 70.0
-STOCHRSI_THRESHOLD = 0.9
+RSI_THRESHOLD = 60.0
+STOCHRSI_THRESHOLD = 0.6
 
 INTERVAL = "15m"
 CANDLE_LIMIT = 100
@@ -61,9 +61,26 @@ logging.basicConfig(
 
 # ────────────────────────── Helper Functions ────────────────────────────
 
+# def fetch_futures_symbols() -> List[str]:
+#     url = f"{BINANCE_FAPI}/fapi/v1/exchangeInfo"
+#     data = session.get(url, timeout=10).json()
+#     print(data)
+#     return [s["symbol"] for s in data["symbols"] if s["status"] == "TRADING"]
+
 def fetch_futures_symbols() -> List[str]:
     url = f"{BINANCE_FAPI}/fapi/v1/exchangeInfo"
-    data = session.get(url, timeout=10).json()
+    try:
+        response = session.get(url, timeout=10)
+        response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
+        data = response.json()
+    except requests.RequestException as e:
+        print(f"Request error: {e}")
+        return []
+
+    if "symbols" not in data:
+        print("Unexpected response structure:", data)
+        return []
+
     return [s["symbol"] for s in data["symbols"] if s["status"] == "TRADING"]
 
 def fetch_klines(symbol: str, interval: str, limit: int = 150) -> pd.Series:
